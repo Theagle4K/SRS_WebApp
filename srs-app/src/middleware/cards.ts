@@ -8,21 +8,21 @@ export function getAllCards(did: number): Card[] {
     return cards;
 }   
 
-export function getCardById(did: number, id: number): Card {
+export function getCardById(did: number, id: number): Card | undefined {
     const db = getDb();
     const card = db.prepare('SELECT * FROM cards WHERE did = @did, id = @id'        
     ).get(
         {
-        '@did': did,
-        '@id': id
+        did: did,
+        id: id
     }) as Card;
     return card ?? undefined; 
 }
 
-export function addCard(newCard: CreateCard, did: number): void {
+export function addCard(newCard: CreateCard, did: number): boolean {
     const db = getDb();
     const card: Card = createCard(newCard, did);
-    db.prepare(`
+    const results = db.prepare(`
         INSERT INTO cards (id, front, back, did, reps, factor, ivl, due, type)
         VALUES (@id, @front, @back, @did, @reps, @factor, @ivl, @due, @type)
     `).run({
@@ -36,11 +36,12 @@ export function addCard(newCard: CreateCard, did: number): void {
         due: card.due,
         type: card.type
     });
+    return results.changes ? results.changes > 0 : false;
 }
 
-export function updateCard(id: number, did: number, newCard: CreateCard): void {
+export function updateCard(id: number, did: number, newCard: CreateCard): boolean {
     const db = getDb();
-    db.prepare(`
+    const results = db.prepare(`
         UPDATE cards SET front = @front, back = @back WHERE id = @id AND did = @did 
     `).run({
             front: newCard.front,
@@ -48,6 +49,7 @@ export function updateCard(id: number, did: number, newCard: CreateCard): void {
             id: id,
             did: did
     });
+    return results.changes ? results.changes > 0 : false;
 }
 
 export function deleteCard(id: number, did: number):boolean {
@@ -58,13 +60,13 @@ export function deleteCard(id: number, did: number):boolean {
             id: id,
             did: did
         });
-    return results.changes > 0;
+    return results.changes ? results.changes > 0 : false;
 }
 
-export function updateReview(id: number, did: number, quality: number, card: Card): void {
+export function updateReview(id: number, did: number, quality: number, card: Card): boolean {
     const db = getDb();
     const reviewedCard = reviewCard(quality, card);
-    db.prepare(`
+    const results = db.prepare(`
         UPDATE cards SET reps = @reps, factor = @factor, ivl = @ivl, type = @type, due = @due WHERE id = @id AND did = @did 
     `).run({
             reps: reviewedCard.reps,
@@ -75,4 +77,5 @@ export function updateReview(id: number, did: number, quality: number, card: Car
             id: id,
             did: did,
     });
+    return results.changes ? results.changes > 0 : false;
 }
